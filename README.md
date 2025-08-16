@@ -1,8 +1,6 @@
 
-# CampusLink — Genişləndirilmiş Mini İcma Platforması
+# CampusLink — Kampus Birliyi Platforması
 
-Bu versiya əvvəlki şablonun **funksionallığı əhəmiyyətli dərəcədə artırılmış** variantıdır.
-Hər modul üçün əlavə imkanlar, **çox detallı AZ şərhlər**, daha geniş **tapşırıq izahları** və **demo məlumat** daxildir.
 
 > **Dərs istifadəsi üçün:** İstədiyiniz faylların içini boşaldıb (kod hissələrini silib) *yalnız şərhləri saxlaya bilərsiniz*.
 Şərhlər hər funksiyanın **məqsədini, giriş/çıxışlarını, addım-addım nə etməli olduğunu** izah edir.
@@ -10,6 +8,7 @@ Hər modul üçün əlavə imkanlar, **çox detallı AZ şərhlər**, daha geni�
 ## 🔧 Quraşdırma
 
 ```bash
+git clone https://github.com/farid002/CampusLink.git
 cd CampusLink
 python -m venv .venv
 # Windows: .venv\Scripts\activate
