@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Blog — CampusLink{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Blog</h2>
+  <a href="{{ url_for('blog.new_post') }}" class="btn btn-primary">Yeni yazı</a>
+</div>
+
+<form class="row g-2 mb-3">
+  <div class="col-md-4"><input class="form-control" name="q" placeholder="Axtar..." value="{{ q or '' }}"></div>
+  <div class="col-md-3"><input class="form-control" name="tag" placeholder="Teq..." value="{{ tag or '' }}"></div>
+  <div class="col-md-3">
+    <select name="published" class="form-select">
+      <option value="">Hamısı</option>
+      <option value="1" {% if published=='1' %}selected{% endif %}>Dərc olunmuş</option>
+      <option value="0" {% if published=='0' %}selected{% endif %}>Draft</option>
+    </select>
+  </div>
+  <div class="col-md-2"><button class="btn btn-secondary w-100">Filtrlə</button></div>
+</form>
+
+{% for p in posts %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">
+        <a href="{{ url_for('blog.detail', post_id=p['id']) }}">{{ p["title"] }}</a>
+        {% if not p['is_published'] %}<span class="badge bg-warning text-dark">Draft</span>{% endif %}
+      </h5>
+      <div class="text-muted small mb-2">{{ p["created_at"] }} — teqlər: {{ p["tags"] or "—" }}</div>
+      <p class="card-text">{{ p["content"][:200] }}{% if p["content"]|length > 200 %}...{% endif %}</p>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('blog.detail', post_id=p['id']) }}">Oxu</a>
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('blog.edit', post_id=p['id']) }}?password=admin123">Düzəlt</a>
+      <a class="btn btn-sm btn-outline-danger" href="{{ url_for('blog.delete', post_id=p['id']) }}?password=admin123">Sil</a>
+    </div>
+  </div>
+{% else %}
+  <p>Heç nə tapılmadı.</p>
+{% endfor %}
+{% endblock %}

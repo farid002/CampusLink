@@ -1,0 +1,12 @@
+
+{% extends "base.html" %}
+{% block title %}Şəkil — Qalereya — CampusLink{% endblock %}
+{% block content %}
+  <h2>{{ img["title"] }}</h2>
+  <img class="img-fluid mb-3" src="{{ url_for('static', filename='uploads/' ~ img['filename']) }}" alt="{{ img['title'] }}">
+  <p class="text-muted">Yükləyən: {{ img["uploader"] }} — {{ img["created_at"] }}</p>
+  <p>
+    <a class="btn btn-sm btn-outline-danger" href="{{ url_for('gallery.delete', image_id=img['id']) }}?password=admin123">Sil (admin)</a>
+    <a class="btn btn-secondary" href="{{ url_for('gallery.grid') }}">Geri</a>
+  </p>
+{% endblock %}

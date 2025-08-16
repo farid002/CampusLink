@@ -1,0 +1,28 @@
+
+{% extends "base.html" %}
+{% block title %}{{ topic["title"] }} — Forum — CampusLink{% endblock %}
+{% block content %}
+  <h2>{{ topic["title"] }}</h2>
+  <div class="text-muted mb-3">{{ topic["author"] }} — {{ topic["created_at"] }}</div>
+  <p style="white-space: pre-wrap;">{{ topic["content"] }}</p>
+  <p><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('forum.like', topic_id=topic['id']) }}">Bəyən ({{ topic['likes'] }})</a>
+     <a class="btn btn-sm btn-outline-warning" href="{{ url_for('forum.pin', topic_id=topic['id']) }}?password=admin123">Pin</a></p>
+  <hr>
+  <h5>Cavablar</h5>
+  <ul class="list-unstyled">
+    {% for r in replies %}
+      <li class="mb-2"><strong>{{ r["author"] }}</strong>: {{ r["content"] }} <span class="text-muted small">— {{ r["created_at"] }}</span></li>
+    {% else %}
+      <li>Hələ cavab yoxdur.</li>
+    {% endfor %}
+  </ul>
+  <hr>
+  <h5>Cavab yaz</h5>
+  <form method="post">
+    <div class="row g-2">
+      <div class="col-md-3"><input name="author" class="form-control" placeholder="Adınız" required></div>
+      <div class="col-md-9"><input name="content" class="form-control" placeholder="Cavabınız" required></div>
+    </div>
+    <button class="btn btn-primary mt-2">Göndər</button>
+  </form>
+{% endblock %}

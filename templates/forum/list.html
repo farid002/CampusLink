@@ -1,0 +1,31 @@
+
+{% extends "base.html" %}
+{% block title %}Forum — CampusLink{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Forum</h2>
+  <a href="{{ url_for('forum.new_topic') }}" class="btn btn-primary">Yeni mövzu</a>
+</div>
+
+<form class="row g-2 mb-3">
+  <div class="col-md-6"><input class="form-control" name="q" placeholder="Axtar..." value="{{ q or '' }}"></div>
+  <div class="col-md-2"><button class="btn btn-secondary w-100">Axtar</button></div>
+</form>
+
+<div class="list-group">
+  {% for t in topics %}
+    <a class="list-group-item list-group-item-action" href="{{ url_for('forum.detail', topic_id=t['id']) }}">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">
+          {% if t["is_pinned"] %}<span class="badge bg-warning text-dark">PIN</span> {% endif %}
+          {{ t["title"] }}
+        </h5>
+        <small>{{ t["author"] }} — {{ t["created_at"] }}</small>
+      </div>
+      <p class="mb-1 text-muted">Likes: {{ t["likes"] }}</p>
+    </a>
+  {% else %}
+    <p>Hələ mövzu yoxdur.</p>
+  {% endfor %}
+</div>
+{% endblock %}

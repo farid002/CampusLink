@@ -1,0 +1,22 @@
+
+{% extends "base.html" %}
+{% block title %}Tədbirlər — CampusLink{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Tədbirlər</h2>
+    <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">Yeni tədbir</a>
+  </div>
+  <div class="list-group">
+    {% for e in events %}
+      <a class="list-group-item list-group-item-action" href="{{ url_for('events.detail', event_id=e['id']) }}">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">{{ e["title"] }}</h5>
+          <small>{{ e["date"] }}</small>
+        </div>
+        <p class="mb-1 text-muted">{{ e["location"] }} — Qalan yer: {{ e["remaining"] }}/{{ e["capacity"] }}</p>
+      </a>
+    {% else %}
+      <p>Hələ tədbir yoxdur.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

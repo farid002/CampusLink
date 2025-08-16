@@ -1,0 +1,33 @@
+
+{% extends "base.html" %}
+{% block title %}{{ event["title"] }} — Tədbirlər — CampusLink{% endblock %}
+{% block content %}
+  <h2>{{ event["title"] }}</h2>
+  <div class="text-muted">📍 {{ event["location"] }} &nbsp; | &nbsp; 🗓 {{ event["date"] }}</div>
+  <p class="mt-3">{{ event["description"] }}</p>
+  <p><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('events.export_csv', event_id=event['id']) }}">Qeydiyyatları CSV kimi endir</a></p>
+  <hr>
+  <h4>Qeydiyyat</h4>
+  {% if remaining <= 0 %}
+    <div class="alert alert-warning">Kapasite dolub.</div>
+  {% endif %}
+  <form method="post">
+    <div class="row g-2">
+      <div class="col-md-4"><input name="name" class="form-control" placeholder="Adınız" required></div>
+      <div class="col-md-4"><input name="email" type="email" class="form-control" placeholder="E-poçt" required></div>
+      <div class="col-md-4"><button class="btn btn-primary w-100" {% if remaining<=0 %}disabled{% endif %}>Qeydiyyatdan keç</button></div>
+    </div>
+  </form>
+  <hr>
+  <h5>Qeydiyyat siyahısı</h5>
+  <ul>
+    {% for r in regs %}
+      <li>{{ r["name"] }} ({{ r["email"] }}) — {{ r["created_at"] }}</li>
+    {% else %}
+      <li>Hələ qeydiyyat yoxdur.</li>
+    {% endfor %}
+  </ul>
+  <p class="mt-3">
+    Öz qeydiyyatlarını yoxla: <a href="{{ url_for('events.my_regs') }}">/events/my-registrations?email=you@example.com</a>
+  </p>
+{% endblock %}

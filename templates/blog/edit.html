@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Yazını düzəlt — Blog — CampusLink{% endblock %}
+{% block content %}
+  <h2>Yazını düzəlt</h2>
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+  {% if post %}
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Başlıq</label>
+      <input name="title" class="form-control" value="{{ post['title'] }}" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Teqlər</label>
+      <input name="tags" class="form-control" value="{{ post['tags'] }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Məzmun</label>
+      <textarea name="content" class="form-control" rows="8" required>{{ post['content'] }}</textarea>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="ispub" name="is_published" {% if post['is_published'] %}checked{% endif %}>
+      <label class="form-check-label" for="ispub">Dərc olunsun</label>
+    </div>
+    <button class="btn btn-primary">Yadda saxla</button>
+  </form>
+  {% endif %}
+{% endblock %}

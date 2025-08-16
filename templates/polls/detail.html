@@ -1,0 +1,33 @@
+
+{% extends "base.html" %}
+{% block title %}Sorğu — CampusLink{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center">
+    <h2>{{ poll["question"] }}</h2>
+    <a class="btn btn-sm btn-outline-warning" href="{{ url_for('polls.toggle', poll_id=poll['id']) }}?password=admin123">
+      {% if poll['is_closed'] %}Aç{% else %}Bağla{% endif %}
+    </a>
+  </div>
+  <form method="post" class="mb-3">
+    {% if poll['is_closed'] %}
+      <div class="alert alert-secondary">Sorğu bağlıdır, səs vermək mümkün deyil.</div>
+    {% else %}
+      {% for opt, meta in percentages %}
+        {% set idx = loop.index0 %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="option_index" value="{{ idx }}" id="opt{{ idx }}">
+          <label class="form-check-label" for="opt{{ idx }}">{{ opt }}</label>
+        </div>
+      {% endfor %}
+      <button class="btn btn-primary mt-2">Səs ver</button>
+    {% endif %}
+  </form>
+  <h5>Nəticələr ({{ total }} səs)</h5>
+  <ul class="list-unstyled">
+    {% for opt, meta in percentages %}
+      {% set count = meta[0] %}
+      {% set pct = meta[1] %}
+      <li class="mb-1"><strong>{{ opt }}</strong>: {{ count }} ({{ "%.1f"|format(pct) }}%)</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

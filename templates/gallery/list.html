@@ -1,0 +1,30 @@
+
+{% extends "base.html" %}
+{% block title %}Qalereya — CampusLink{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Qalereya</h2>
+    <a href="{{ url_for('gallery.upload') }}" class="btn btn-primary">Yüklə</a>
+  </div>
+  <form class="row g-2 mb-3">
+    <div class="col-md-6"><input class="form-control" name="uploader" placeholder="Yükləyənə görə filtr..." value="{{ uploader or '' }}"></div>
+    <div class="col-md-2"><button class="btn btn-secondary w-100">Filtrlə</button></div>
+  </form>
+  <div class="row g-3">
+    {% for img in images %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="card">
+          <a href="{{ url_for('gallery.detail', image_id=img['id']) }}">
+            <img class="card-img-top" src="{{ url_for('static', filename='uploads/' ~ img['filename']) }}" alt="{{ img['title'] }}">
+          </a>
+          <div class="card-body">
+            <h6 class="card-title">{{ img["title"] }}</h6>
+            <div class="text-muted small">{{ img["uploader"] }} — {{ img["created_at"] }}</div>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <p>Hələ şəkil yoxdur.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

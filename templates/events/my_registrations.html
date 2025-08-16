@@ -1,0 +1,22 @@
+
+{% extends "base.html" %}
+{% block title %}Mənim qeydiyyatlarım — Tədbirlər — CampusLink{% endblock %}
+{% block content %}
+  <h2>Mənim qeydiyyatlarım</h2>
+  <form class="row g-2 mb-3">
+    <div class="col-md-6">
+      <input class="form-control" name="email" placeholder="E-poçtunuzu daxil edin" value="{{ email }}">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100">Axtar</button>
+    </div>
+  </form>
+  {% if email and not items %}
+    <div class="alert alert-warning">{{ email }} üçün qeydiyyat tapılmadı.</div>
+  {% endif %}
+  <ul>
+    {% for i in items %}
+      <li>{{ i["title"] }} — {{ i["date"] }} ({{ i["location"] }}) — qeydiyyat tarixi: {{ i["created_at"] }}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

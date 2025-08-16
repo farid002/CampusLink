@@ -1,0 +1,47 @@
+
+{% extends "base.html" %}
+{% block title %}Admin — Geri bildiriş{% endblock %}
+{% block content %}
+  <h2>Mesajlar</h2>
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+  <form class="row g-2 mb-3" method="get" action="{{ url_for('feedback.admin_feedback') }}">
+    <input type="hidden" name="password" value="admin123">
+    <div class="col-md-4"><input class="form-control" name="q" placeholder="Axtar (ad/email/mesaj)..." value="{{ request.args.get('q','') }}"></div>
+    <div class="col-md-3">
+      <select class="form-select" name="status">
+        <option value="" {% if not request.args.get('status') %}selected{% endif %}>Status (hamısı)</option>
+        {% for st in ["pending","open","handled"] %}
+          <option value="{{ st }}" {% if request.args.get('status')==st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3"><input class="form-control" name="category" placeholder="Kateqoriya..." value="{{ request.args.get('category','') }}"></div>
+    <div class="col-md-2"><button class="btn btn-secondary w-100">Filtrlə</button></div>
+  </form>
+
+  <p><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('feedback.export_csv') }}?password=admin123">CSV ixrac</a></p>
+
+  <div class="list-group">
+    {% for it in items %}
+      <div class="list-group-item">
+        <div class="d-flex w-100 justify-content-between">
+          <h6 class="mb-1">{{ it["name"] }} — {{ it["email"] }} <span class="badge bg-secondary">{{ it["category"] }}</span></h6>
+          <small>{{ it["created_at"] }}</small>
+        </div>
+        <p class="mb-1" style="white-space: pre-wrap;">{{ it["message"] }}</p>
+        <form method="post" action="{{ url_for('feedback.set_status', fb_id=it['id']) }}" class="mt-2 d-flex gap-2">
+          <input type="hidden" name="password" value="admin123">
+          <select class="form-select form-select-sm" name="status" style="max-width: 200px;">
+            {% for st in ["pending","open","handled"] %}
+              <option value="{{ st }}" {% if it["status"]==st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm btn-primary">Yadda saxla</button>
+        </form>
+      </div>
+    {% else %}
+      <p>Hələ mesaj yoxdur.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -1,0 +1,25 @@
+
+{% extends "base.html" %}
+{% block title %}Yeni yazı — Blog — CampusLink{% endblock %}
+{% block content %}
+  <h2>Yeni yazı</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Başlıq</label>
+      <input name="title" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Teqlər (sətirlə, vergüllə və ya boş)</label>
+      <input name="tags" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Məzmun</label>
+      <textarea name="content" class="form-control" rows="8" required></textarea>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="ispub" name="is_published" checked>
+      <label class="form-check-label" for="ispub">Dərc olunsun</label>
+    </div>
+    <button class="btn btn-primary">Yarat</button>
+  </form>
+{% endblock %}
