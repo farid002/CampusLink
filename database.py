@@ -66,7 +66,8 @@ def init_db(force: bool = False):
             tags TEXT,
             created_at TEXT NOT NULL,
             is_published INTEGER NOT NULL DEFAULT 1,
-            slug TEXT UNIQUE
+            slug TEXT UNIQUE,
+            views INTEGER NOT NULL DEFAULT 0
         );
 
         -- Events
