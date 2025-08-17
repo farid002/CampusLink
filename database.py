@@ -124,7 +124,9 @@ def init_db(force: bool = False):
             question TEXT NOT NULL,
             options_json TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            is_closed INTEGER NOT NULL DEFAULT 0
+            is_closed INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            expires_at TEXT
         );
 
         CREATE TABLE IF NOT EXISTS poll_votes (

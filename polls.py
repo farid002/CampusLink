@@ -21,26 +21,20 @@ bp = Blueprint("polls", __name__, url_prefix="/polls")
 ADMIN_PASS = "admin123"  # demo parol (yalnız dərs məqsədi üçün)
 
 
+import secrets
+from flask import session
+
 @bp.before_app_request
 def ensure_session():
     """
-    Hər istifadəçi üçün **sadə sessiya identifikatoru** saxlamaq (demo).
-
-    Bu funksiya **tələbə tərəfindən implement oluna bilər** (hazırda skeleton-dur):
-
-      Məqsəd:
-        - Real login/auth olmadan, eyni brauzerdən gələn istifadəçini fərqləndirmək.
-        - `session["voter_id"]` üçün təsadüfi dəyər yaratmaq (məs., `secrets.token_hex(8)`).
-
-      Addımlar:
-        1) Əgər `session` içində `voter_id` YOXDURsa, yaradın:
-           `session["voter_id"] = secrets.token_hex(8)`
-        2) Bu, *təkrar səsvermənin qarşısını tam almaz*, sadəcə demo məntiqidir (cookie silinsə, dəyişə bilər).
-        3) Real sistemlərdə **istifadəçi girişi** və ya **IP/cihaz odaklı limitlər** lazımdır.
-
-    Qeyd: skeleton olaraq heç nə etmirik.
+    Hər istifadəçi üçün sadə sessiya identifikatoru saxlamaq (demo).
     """
-    # pass  # İstəsəniz yuxarıdakı məntiqlə doldurun.
+    # Sessiyanı qalıcı et (cookie brauzer bağlansa da qalsın)
+    session.permanent = True
+
+    # Əgər voter_id hələ yoxdursa → yarad
+    if "voter_id" not in session:
+        session["voter_id"] = secrets.token_hex(8)  # məsələn: 'a3f9c1e2...'
     return None
 
 
@@ -66,114 +60,157 @@ def list_polls():
 
     Qeyd: Skeleton olaraq hazırda yalnız şablonu qaytarır.
     """
-    return render_template("polls/list.html")
+    db = get_db()
+    polls = db.execute(
+        "SELECT id, question, is_closed FROM polls ORDER BY id DESC"
+    ).fetchall()
+
+    return render_template("polls/list.html", polls=polls)
 
 
-@bp.route("/new", methods=["GET","POST"])
+import datetime, json
+from flask import request, render_template, redirect, url_for, flash, session
+
+@bp.route("/new", methods=["GET","POST"], endpoint="new")
 def new():
     """
     Yeni sorğu yaratmaq (admin demo).
-
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**:
-
-      1) GET:
-         - `polls/new.html` şablonunu render et.
-         - Form sahələri:
-           - `password` (admin yoxlaması üçün)
-           - `question` (mütləq)
-           - `options` (textarea: hər sətirdə 1 seçim; ən az 2 seçim tələb olunur)
-
-      2) POST:
-         - `request.form` ilə dəyərləri al, `.strip()` et.
-         - **Admin parolu**: `password == ADMIN_PASS` olmalıdır; yanlışsa eyni şablonu `error="Admin parolu səhvdir."` ilə render et.
-         - `question` boş ola bilməz.
-         - `options`-u `splitlines()` ilə sətirlərə böl, boşları at:
-           `opts = [o.strip() for o in options_raw.splitlines() if o.strip()]`
-         - `len(opts) < 2` isə xəta ver və eyni şablonu render et.
-         - DB INSERT:
-           `INSERT INTO polls (question, options_json, is_closed, created_at) VALUES (?, ?, 0, ?)`
-           - `options_json` üçün `json.dumps(opts)`
-           - `created_at` üçün `datetime.datetime.now().strftime("%Y-%m-%d %H:%M")`
-         - `commit()` et və `redirect(url_for("polls.list_polls"))`.
-
-      3) UX ipucları:
-         - Hər sətirdə 1 seçim yazılması üçün placeholder ver.
-         - Uğurdan sonra flash/alert ilə “yaradıldı” mesajı.
-
-    Qeyd: Skeleton olaraq hazırda yalnız şablonu qaytarır.
     """
+    if request.method == "POST":
+        # 1) Form dəyərləri
+        password = request.form.get("password", "").strip()
+        question = request.form.get("question", "").strip()
+        options_raw = request.form.get("options", "").strip()
+
+        # 2) Admin parolunu yoxla
+        if password != ADMIN_PASS:
+            error = "Admin parolu səhvdir."
+            return render_template("polls/new.html", error=error)
+
+        # 3) Suallar və seçimlər
+        if not question:
+            error = "Sual boş ola bilməz."
+            return render_template("polls/new.html", error=error)
+
+        opts = [o.strip() for o in options_raw.splitlines() if o.strip()]
+        if len(opts) < 2:
+            error = "Ən azı 2 seçim yazılmalıdır."
+            return render_template("polls/new.html", error=error)
+
+        # 4) DB-yə əlavə et
+        created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        db = get_db()
+        db.execute(
+            "INSERT INTO polls (question, options_json, is_closed, created_at) VALUES (?, ?, 0, ?)",
+            (question, json.dumps(opts), created_at),
+        )
+        db.commit()
+
+        flash("Yeni sorğu uğurla yaradıldı.")
+        return redirect(url_for("polls.list_polls"))
+
+    # GET metodu: formu göstər
     return render_template("polls/new.html", error=None)
 
 
-@bp.route("/<int:poll_id>/toggle", methods=["POST"])
+
+@bp.route("/<int:poll_id>/toggle", methods=["POST"], endpoint="toggle")
 def toggle(poll_id: int):
     """
-    Sorğunu **aç/bağla** (admin demo).
-
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**:
-
-      1) Admin yoxlaması:
-         - `request.form.get("password") == ADMIN_PASS` olmalıdır.
-         - Yanlışdırsa 403 qaytar (və ya `flash()` + redirect).
-
-      2) DB UPDATE:
-         - `UPDATE polls SET is_closed = 1 - is_closed WHERE id=?`
-         - `commit()`.
-
-      3) Nəticə:
-         - `redirect(url_for("polls.detail", poll_id=poll_id))`.
-
+    Sorğunu aç/bağla (admin demo).
     """
+    db = get_db()
+
+    # 1) Admin yoxlaması
+    pwd = request.form.get("password", "").strip()
+    if pwd != ADMIN_PASS:
+        flash("Admin şifrəsi səhvdir.")
+        return redirect(url_for("polls.detail", poll_id=poll_id))
+
+    # 2) DB UPDATE — statusu çevirmək
+    db.execute(
+        "UPDATE polls SET is_closed = CASE is_closed WHEN 1 THEN 0 ELSE 1 END WHERE id=?",
+        (poll_id,),
+    )
+    db.commit()
+
+    flash("Sorğunun statusu dəyişdirildi.")
+    # 3) Redirect geri detallara
+    return redirect(url_for("polls.detail", poll_id=poll_id))
 
 
-@bp.route("/<int:poll_id>", methods=["GET","POST"])
+
+# polls.py (başda: import json, secrets OLUB; indi datetime da əlavə edirik)
+import datetime
+
+@bp.route("/<int:poll_id>", methods=["GET", "POST"], endpoint="detail")
 def detail(poll_id: int):
     """
-    Sorğu detalları: **səsvermə** və **nəticələr** (demo anti-duplication).
-
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**:
-
-      1) DB-dən sorğunu gətir:
-         - `poll = SELECT * FROM polls WHERE id=?`
-         - Tapılmasa: `render_template("404.html"), 404`
-         - `options = json.loads(poll["options_json"])`
-
-      2) POST (səsvermə):
-         - Sorğu `is_closed` isə səs qəbul etmə.
-         - Eyni istifadəçinin təkrar səs verməsinin qarşısı (sadə demo):
-           - `if session.get(f"voted_{poll_id}"):` → artıq səsləyibsə, yenidən qəbul etmə.
-           - Qeyd: Bu yalnız cookie/sessiya əsaslı sadə yanaşmadır. Real sistemdə auth lazımdır.
-         - `option_index` al:
-           ```
-           try:
-               idx = int(request.form.get("option_index","-1"))
-           except ValueError:
-               idx = -1
-           ```
-         - `0 <= idx < len(options)` doğrudursa:
-           - DB INSERT:
-             `INSERT INTO poll_votes (poll_id, option_index, created_at) VALUES (?, ?, ?)`
-             - `created_at` → `datetime.datetime.now().strftime("%Y-%m-%d %H:%M")`
-           - `session[f"voted_{poll_id}"] = True`
-           - `commit()` və `redirect(url_for("polls.detail", poll_id=poll_id))`
-
-      3) GET (nəticələri hesablamaq):
-         - `SELECT option_index, COUNT(*) AS cnt FROM poll_votes WHERE poll_id=? GROUP BY option_index`
-         - `counts = {row["option_index"]: row["cnt"] for row in votes}`
-         - `total = sum(counts.values()) if counts else 0`
-         - Şablonda göstərmək üçün:
-           - `percentages = [...]` cütlükləri (seçim adı, (say, faiz))
-           - Faiz hesabı: `count/total*100` (total 0-dırsa 0.0)
-
-      4) Şablon:
-         - `polls/detail.html` render et və ötür:
-           - `poll`, `options`, `percentages`, `total`
-         - Progress bar-larla vizual nəticə göstərə bilərsiniz (Bootstrap).
-
-      5) UX ipucları:
-         - “Səs ver” formu radios + submit.
-         - Səs verdikdən sonra nəticələr bölməsinə auto-scroll (istəyə görə).
-
-    Qeyd: Skeleton olaraq hazırda yalnız şablonu qaytarır.
+    Sorğu detalları: səsvermə (POST) və nəticələr (GET).
     """
-    return render_template("polls/detail.html")
+    db = get_db()
+    poll = db.execute("SELECT * FROM polls WHERE id=?", (poll_id,)).fetchone()
+    if not poll:
+        return render_template("404.html"), 404
+
+    # Seçimləri yüklə
+    options = json.loads(poll["options_json"])
+
+    # --- POST: SƏSVERMƏ ---
+    if request.method == "POST":
+        # Bağlı sorğuda səs qəbul etmə
+        if poll["is_closed"]:
+            flash("Bu sorğu bağlıdır. Səs qəbul edilmir.")
+            return redirect(url_for("polls.detail", poll_id=poll_id))
+
+        # Eyni istifadəçinin təkrar səsi (demo sessiya əsaslı)
+        if session.get(f"voted_{poll_id}"):
+            flash("Artıq səs vermisiniz.")
+            return redirect(url_for("polls.detail", poll_id=poll_id))
+
+        # Göndərilən option_index-i oxu və doğrula
+        try:
+            idx = int(request.form.get("option_index", "-1"))
+        except ValueError:
+            idx = -1
+
+        if 0 <= idx < len(options):
+            created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            db.execute(
+                "INSERT INTO poll_votes (poll_id, option_index, created_at) VALUES (?, ?, ?)",
+                (poll_id, idx, created_at),
+            )
+            db.commit()
+            session[f"voted_{poll_id}"] = True
+            flash("Səsiniz qeydə alındı.")
+            return redirect(url_for("polls.detail", poll_id=poll_id))
+        else:
+            flash("Seçim düzgün deyil.")
+            return redirect(url_for("polls.detail", poll_id=poll_id))
+
+    # --- GET: NƏTİCƏLƏR ---
+    rows = db.execute(
+        "SELECT option_index, COUNT(*) AS cnt FROM poll_votes WHERE poll_id=? GROUP BY option_index",
+        (poll_id,),
+    ).fetchall()
+
+    # Sayımlar
+    counts_map = {r["option_index"]: r["cnt"] for r in rows}
+    counts = [counts_map.get(i, 0) for i in range(len(options))]
+    total = sum(counts)
+
+    # Faizlər
+    percentages = []
+    for i, opt in enumerate(options):
+        c = counts[i]
+        pct = (c / total * 100.0) if total > 0 else 0.0
+        # Şablonda rahat istifadə üçün tuple şəklində:
+        percentages.append((opt, c, round(pct, 1)))  # (ad, say, faiz%)
+
+    return render_template(
+        "polls/detail.html",
+        poll=poll,
+        options=options,
+        percentages=percentages,
+        total=total,
+    )

@@ -1,22 +1,25 @@
-
 {% extends "base.html" %}
-{% block title %}Yeni sorğu — CampusLink{% endblock %}
+{% block title %}Yeni sorğu{% endblock %}
 {% block content %}
-  <h2>Yeni sorğu</h2>
-  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-  <form method="post">
-    <div class="mb-3">
-      <label class="form-label">Admin parolu</label>
-      <input name="password" class="form-control" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Sual</label>
-      <input name="question" class="form-control" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Seçimlər (hər sətirdə bir seçim)</label>
-      <textarea name="options" class="form-control" rows="5" required></textarea>
-    </div>
-    <button class="btn btn-primary">Yarat</button>
-  </form>
+<h1 class="h4 mb-3">Yeni sorğu yarat</h1>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Admin şifrəsi</label>
+    <input type="password" name="password" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Sual</label>
+    <input type="text" name="question" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Seçimlər (hər sətrə 1)</label>
+    <textarea name="options" rows="4" class="form-control" placeholder="Variant 1\nVariant 2" required></textarea>
+  </div>
+  <button class="btn btn-primary">Yarat</button>
+</form>
 {% endblock %}
