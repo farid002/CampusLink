@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 {% block title %}Qalereya — CampusLink{% endblock %}
 {% block content %}
@@ -6,7 +5,7 @@
     <h2>Qalereya</h2>
     <a href="{{ url_for('gallery.upload') }}" class="btn btn-primary">Yüklə</a>
   </div>
-  <form class="row g-2 mb-3">
+  <form class="row g-2 mb-3" method="get">
     <div class="col-md-6"><input class="form-control" name="uploader" placeholder="Yükləyənə görə filtr..." value="{{ uploader or '' }}"></div>
     <div class="col-md-2"><button class="btn btn-secondary w-100">Filtrlə</button></div>
   </form>

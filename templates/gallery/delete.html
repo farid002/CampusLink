@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Şəkli Sil — Qalereya — CampusLink{% endblock %}
+
+{% block content %}
+  <h2>Şəkli sil</h2>
+  <p class="text-danger">Bu şəkli silmək istədiyinizə əminsiniz? Bu əməliyyat geri alına bilməz.</p>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-danger">
+        {% for message in messages %}
+          <div>{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post">
+    <div class="mb-3">
+      <label for="password" class="form-label">Admin parolu</label>
+      <input type="password" name="password" id="password" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-danger">Sil</button>
+    <a href="{{ url_for('gallery.detail', image_id=image_id) }}" class="btn btn-secondary">Ləğv et</a>
+  </form>
+{% endblock %}
