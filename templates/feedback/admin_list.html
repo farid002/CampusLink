@@ -32,8 +32,8 @@
     {% for it in items %}
       <div class="list-group-item">
         <div class="d-flex w-100 justify-content-between">
-          <h6 class="mb-1">{{ it["name"] }} — {{ it["email"] }} <button class="btn btn-sm btn-primary" >{{ it["category"] }}</button></h6>
-          <p>{{ it["created_at"] }}</p>
+          <h6 class="mb-1">{{ it["name"] }} — {{ it["email"] }} <span class="badge bg-secondary">{{ it["category"] }}</span></h6>
+          <small>{{ it["created_at"] }}</small>
         </div>
         <p class="mb-1" style="white-space: pre-wrap;">{{ it["message"] }}</p>
 
