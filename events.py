@@ -11,172 +11,192 @@ Texnologiyalar: Flask (routes, request/response, render_template), SQLite (sqlit
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
+from flask import g
 from database import get_db
-import datetime, csv, io
+import datetime, csv, io,sqlite3
 
 bp = Blueprint("events", __name__, url_prefix="/events")
 ADMIN_PASS = "admin123"  # demo üçün sadə parol (yalnız dərs məqsədli)
-
 @bp.route("/")
 def list_events():
-    """
-    Bütün tədbirləri tarixə görə **artan** sırada göstərən siyahı səhifəsi.
+    db = get_db()
 
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**. Görüləcək işlər:
-      1) **DB sorğusu:**
-         - `events` cədvəlindən bütün sətrləri tarixə görə artan qaydada seçin:
-           `SELECT * FROM events ORDER BY date ASC`
-         - `sqlite3.Row` ilə işləyirsinizsə, nəticələri dict kimi istifadə edə biləcəksiniz.
+    rows = db.execute("SELECT * FROM events ORDER BY date ASC").fetchall()
 
-      2) **Qalan yer (capacity remaining) hesabı:**
-         - Hər tədbir üçün qeydiyyatların sayını tapın:
-           `SELECT COUNT(*) AS c FROM event_registrations WHERE event_id=?`
-         - `remaining = max(0, capacity - count)` hesablayın.
-         - Şablona ötürəcəyiniz obyektə `remaining` sahəsini əlavə edin (məs., `dict(e)` üzərində).
+    final_events = []
+    for event in rows:
+        count = db.execute(
+            "SELECT COUNT(*) FROM event_registrations WHERE event_id = ?",
+            (event["id"],)
+        ).fetchone()[0]
+        remaining = max(0, event["capacity"] - count)
 
-      3) **Şablon render:**
-         - `events/list.html` şablonunu render edin.
-         - Şablona `events` (içində `remaining` sahəsi olan) siyahısını verin.
+        # Row → dict
+        event_dict = dict(event)
+        event_dict["remaining"] = remaining
 
-      4) **UX ipucları:**
-         - Qalan yer 0 olduqda “Full” etiketi göstərin və “Register” düyməsini deaktiv edin.
-         - Tarixi insan-oxunaqlı göstərmək üçün Jinja2-də formatlama edə bilərsiniz.
+        final_events.append(event_dict)
 
-    Qeyd: Hal-hazırda funksiya yalnız boş şablonu qaytarır.
-    """
-    return render_template("events/list.html")
-
-
+    return render_template("events/list.html", events=final_events)
 @bp.route("/create", methods=["GET","POST"])
 def create_event():
-    """
-    Yeni tədbir yaratmaq üçün səhifə (GET formu göstərir, POST məlumatı qəbul edir) — **admin parolu** ilə sadə demo.
+    ADMIN_PASS = "admin123"  # demo üçün sadə parol
 
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**. Görüləcək işlər:
-      1) **GET (formun göstərilməsi):**
-         - `events/create.html` şablonunu render edin.
-         - Forma sahələri: `title` (mütləq), `date` (mütləq, ISO `YYYY-MM-DD`), `location` (mütləq),
-           `description` (mütləq), `capacity` (default 100), `password` (admin yoxlaması üçün).
-         - Forma Bootstrap ilə tərtib oluna bilər.
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        date = request.form.get("date", "").strip()
+        location = request.form.get("location", "").strip()
+        description = request.form.get("description", "").strip()
+        capacity = request.form.get("capacity", "").strip()
+        password = request.form.get("password", "").strip()
 
-      2) **POST (formun emalı):**
-         - `request.form` vasitəsilə dəyərləri oxuyun və `.strip()` tətbiq edin.
-         - **Admin parolu**: `password` dəyəri `ADMIN_PASS` ilə eyni olmalıdır. Yanlışdırsa:
-           - eyni şablonu `error="Admin parolu səhvdir."` ilə render edin.
-         - **Validasiya**: `title`, `date`, `location`, `description` boş ola bilməz.
-           - Boşdursa `error="Bütün sahələr doldurulmalıdır."` mesajı ilə render edin.
-         - `capacity` rəqəmə çevrilməlidir (int). Boşdursa 100 götürün (və ya formda `min="1"` təyin edin).
-         - DB-yə INSERT:
-           `INSERT INTO events (title, date, location, description, capacity) VALUES (?, ?, ?, ?, ?)`
-         - `commit()` edin.
-         - Uğurdan sonra `redirect(url_for("events.list_events"))`.
+        # Admin parol yoxlanışı
+        if password != ADMIN_PASS:
+            error = "Admin parolu səhvdir."
+            return render_template("events/create.html", error=error)
 
-      3) **Təhlükəsizlik qeydi:**
-         - Bu parol yoxlaması yalnız **dərs məqsədi** üçündür. Real layihədə proper auth lazımdır.
+        # Vacib sahələrin yoxlanışı
+        if not title or not date or not location or not description:
+            error = "Bütün sahələr doldurulmalıdır."
+            return render_template("events/create.html", error=error)
 
-    Qeyd: Hal-hazırda funksiya yalnız boş şablonu qaytarır.
-    """
+        # Capacity int-ə çevrilir, boşdursa 100 götürülür
+        try:
+            capacity = int(capacity) if capacity else 100
+        except ValueError:
+            capacity = 100
+
+        # DB-yə əlavə
+        db = get_db()
+        db.execute(
+            "INSERT INTO events (title, date, location, description, capacity) VALUES (?, ?, ?, ?, ?)",
+            (title, date, location, description, capacity)
+        )
+        db.commit()
+
+        flash("Tədbir uğurla yaradıldı!", "success")
+        return redirect(url_for("events.list_events"))
+
+    # GET request: form göstərilir
     return render_template("events/create.html", error=None)
-
-
 @bp.route("/<int:event_id>", methods=["GET", "POST"])
 def detail(event_id: int):
-    """
-    Tədbir detalı + qeydiyyat formu (GET: göstər, POST: qeydiyyat et).
+    db = get_db()
+    event = db.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+    if not event:
+        return render_template("404.html"), 404
 
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**. Görüləcək işlər:
+    reg_count = db.execute(
+        "SELECT COUNT(*) FROM event_registrations WHERE event_id = ?", (event_id,)
+    ).fetchone()[0]
+    remaining = max(0, event["capacity"] - reg_count)
 
-      1) **Tədbiri DB-dən gətirin:**
-         - `SELECT * FROM events WHERE id = ?` ilə tədbiri tapın.
-         - Tapılmasa → `render_template("404.html"), 404`.
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        if not name or not email:
+            flash("Ad və e-poçt mütləqdir.")
+            return redirect(url_for("events.detail", event_id=event_id))
+        if remaining <= 0:
+            flash("Kapasite dolub.")
+            return redirect(url_for("events.detail", event_id=event_id))
+        try:
+            db.execute(
+                "INSERT INTO event_registrations (event_id, name, email, created_at) VALUES (?, ?, ?, ?)",
+                (event_id, name, email, datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+            )
+            db.commit()
+            flash("Qeydiyyat uğurla tamamlandı.")
+            return redirect(url_for("events.detail", event_id=event_id))
+        except sqlite3.IntegrityError:
+            flash("Bu e-poçt ilə artıq qeydiyyatdan keçmisiniz.")
+            return redirect(url_for("events.detail", event_id=event_id))
 
-      2) **Qalan yerin hesablanması:**
-         - `reg_count = SELECT COUNT(*) FROM event_registrations WHERE event_id=?`
-         - `remaining = max(0, event["capacity"] - reg_count)`
+    regs = db.execute(
+        "SELECT * FROM event_registrations WHERE event_id = ? ORDER BY id DESC", (event_id,)
+    ).fetchall()
 
-      3) **POST (qeydiyyat):**
-         - Form sahələri: `name` (mütləq), `email` (mütləq).
-         - Boşdursa `flash("Ad və e-poçt mütləqdir.")` və `redirect(url_for("events.detail", event_id=event_id))`.
-         - `remaining <= 0` isə `flash("Kapasite dolub.")` və redirect eyni səhifəyə.
-         - INSERT:
-           `INSERT INTO event_registrations (event_id, name, email, created_at) VALUES (?, ?, ?, ?)`
-           `created_at` üçün `datetime.datetime.now().strftime("%Y-%m-%d %H:%M")`.
-         - **Eyni e-poçtun təkrarı**: DB-də `UNIQUE(event_id, email)` constraint əlavə olunduqda,
-           təkrar cəhd `IntegrityError` verəcək. `try/except` ilə `flash("Bu e-poçt ilə artıq qeydiyyatdan keçmisiniz.")`.
-
-      4) **GET (səhifənin göstərilməsi):**
-         - Bu tədbirə aid qeydiyyatları da göstərin:
-           `SELECT * FROM event_registrations WHERE event_id = ? ORDER BY id DESC`
-         - `events/detail.html` şablonunu render edin və ötürün:
-           `event`, `regs` (qeydiyyatlar), `remaining`.
-
-      5) **UX ipucları:**
-         - Qalan yer 0 olduqda qeydiyyat formunu deaktiv edin.
-         - Qeydiyyat uğurlu olduqda flash mesajı göstərin.
-         - E-poçt inputunda `type="email"` istifadə edin.
-
-    Qeyd: Hal-hazırda funksiya yalnız boş şablonu qaytarır.
-    """
-    return render_template("events/detail.html")
-
-
+    return render_template("events/detail.html", event=event, regs=regs, remaining=remaining)
 @bp.route("/<int:event_id>/export.csv")
 def export_csv(event_id: int):
-    """
-    Bu route **tədbir qeydiyyatlarını CSV faylı kimi ixrac** edir.
+    db = get_db()
 
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**. Görüləcək işlər:
-      1) **Tədbirin mövcudluğunu yoxlayın:**
-         - `SELECT * FROM events WHERE id = ?`
-         - Tapılmasa → `render_template("404.html"), 404`.
+    # 1️⃣ Tədbiri yoxlayın
+    event = db.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+    if not event:
+        return render_template("404.html"), 404
 
-      2) **Qeydiyyatları seçin və CSV hazırlayın:**
-         - `SELECT name, email, created_at FROM event_registrations WHERE event_id=? ORDER BY id ASC`
-         - `io.StringIO()` buffer yaradın, `csv.writer(buf)` istifadə edin.
-         - Başlıq sətri yazın: `["name","email","created_at"]`
-         - Sətirləri dövrə salıb `writer.writerow([...])` ilə əlavə edin.
+    # 2️⃣ Qeydiyyatları götürün
+    regs = db.execute("""
+        SELECT name, email, created_at
+        FROM event_registrations
+        WHERE event_id = ?
+        ORDER BY id ASC
+    """, (event_id,)).fetchall()
 
-      3) **Cavab olaraq CSV qaytarın:**
-         - `Response(buf.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=event_<ID>_regs.csv"})`
+    # 3️⃣ CSV hazırlayın
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "email", "created_at"])  # başlıq
 
-      4) **UX ipucları:**
-         - `events/detail.html` daxilində “Export CSV” düyməsi verin.
-         - Boş qeydiyyat olduqda fayl ancaq header-larla yüklənəcək.
+    for reg in regs:
+        writer.writerow([reg["name"], reg["email"], reg["created_at"]])
 
-    Qeyd: Skeleton olaraq biz burada yalnız məlumat səhifəsi/şablonu göstəririk.
-    """
-    # Birbaşa CSV qaytara bilərsiniz
-
+    # 4️⃣ Cavabı qaytarın
+    csv_filename = f"event_{event_id}_regs.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={csv_filename}"}
+    )
 
 @bp.route("/my-registrations")
 def my_regs():
+    db = get_db()
+    email = request.args.get("email", "").strip()
+    items = []
+
+    if email:
+        items = db.execute("""
+            SELECT e.title, e.date, e.location, r.created_at
+            FROM event_registrations r
+            JOIN events e ON e.id = r.event_id
+            WHERE r.email = ?
+            ORDER BY r.created_at DESC
+        """, (email,)).fetchall()
+
+    return render_template(
+        "events/my_registrations.html",
+        email=email,
+        items=items
+    )
+from flask import request, render_template, redirect, url_for, current_app
+
+ADMIN_PASS = "admin123"  # Dərs məqsədli demo parol
+
+@bp.route("/delete", methods=["POST"])
+def delete_event():
     """
-    İstifadəçinin e-poçtuna görə **bütün iştirak etdiyi tədbirləri** göstərən səhifə.
-
-    Bu funksiya **tələbə tərəfindən implement olunmalıdır**. Görüləcək işlər:
-      1) **Query parametri:**
-         - `email` dəyərini `request.args.get("email")` ilə alın və `.strip()` edin.
-         - Boşdursa, sadəcə formu göstərin və `items=[]` qaytarın.
-
-      2) **DB sorğusu (email varsa):**
-         - Join sorğusu yazın ki, tədbirin başlıq/tarix/məkanını da görək:
-           ```
-           SELECT e.title, e.date, e.location, r.created_at
-           FROM event_registrations r
-           JOIN events e ON e.id = r.event_id
-           WHERE r.email = ?
-           ORDER BY r.created_at DESC
-           ```
-         - Nəticəni `items` kimi şablona ötürün.
-
-      3) **Şablon render:**
-         - `events/my_registrations.html` şablonunu render edin.
-         - Şablona `email` və `items` verin.
-
-      4) **UX ipucları:**
-         - Üstdə sadə bir forma (email input + “Bax” düyməsi).
-         - Nəticə cədvəlində başlıq, tarix, məkan, qeydiyyat vaxtı sütünları.
-
-    Qeyd: Hal-hazırda funksiya yalnız boş şablonu qaytarır.
+    Tədbiri admin parolu ilə silmək üçün.
+    Form POST edir: event_id və password.
     """
-    return render_template("events/my_registrations.html")
+    event_id = request.form.get("event_id")
+    password = request.form.get("password", "").strip()
+
+    if password != ADMIN_PASS:
+        flash("Admin parolu səhvdir.", "danger")
+        return redirect(url_for("events.list_events"))
+
+    if not event_id or not event_id.isdigit():
+        flash("Yanlış tədbir ID.", "danger")
+        return redirect(url_for("events.list_events"))
+
+    db = get_db()
+    # 1️⃣ Əvvəl qeydiyyatları sil
+    db.execute("DELETE FROM event_registrations WHERE event_id = ?", (int(event_id),))
+    # 2️⃣ Sonra tədbiri sil
+    db.execute("DELETE FROM events WHERE id = ?", (int(event_id),))
+    db.commit()
+
+    flash("Tədbir və bütün qeydiyyatlar uğurla silindi.", "success")
+    return redirect(url_for("events.list_events"))

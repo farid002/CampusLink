@@ -1,22 +1,44 @@
-
 {% extends "base.html" %}
 {% block title %}Tədbirlər — CampusLink{% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Tədbirlər</h2>
-    <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">Yeni tədbir</a>
-  </div>
-  <div class="list-group">
-    {% for e in events %}
-      <a class="list-group-item list-group-item-action" href="{{ url_for('events.detail', event_id=e['id']) }}">
-        <div class="d-flex w-100 justify-content-between">
-          <h5 class="mb-1">{{ e["title"] }}</h5>
-          <small>{{ e["date"] }}</small>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Tədbirlər</h2>
+  <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">Yeni tədbir</a>
+</div>
+
+<div class="list-group">
+  {% for e in events %}
+    <div class="list-group-item">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <a href="{{ url_for('events.detail', event_id=e['id']) }}" class="text-decoration-none">
+            <h5 class="mb-1">{{ e["title"] }}</h5>
+          </a>
+          <p class="mb-1 text-muted">{{ e["location"] }} — Qalan yer: {{ e["remaining"] }}/{{ e["capacity"] }}</p>
         </div>
-        <p class="mb-1 text-muted">{{ e["location"] }} — Qalan yer: {{ e["remaining"] }}/{{ e["capacity"] }}</p>
-      </a>
-    {% else %}
-      <p>Hələ tədbir yoxdur.</p>
-    {% endfor %}
-  </div>
+        <div class="text-end">
+          <small class="d-block mb-2">{{ e["date"] }}</small>
+          <!-- Sil düyməsi -->
+          <button class="btn btn-danger btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#deleteForm{{ e['id'] }}" aria-expanded="false" aria-controls="deleteForm{{ e['id'] }}">
+            Sil
+          </button>
+        </div>
+      </div>
+
+      <!-- Collapse form -->
+      <div class="collapse mt-2" id="deleteForm{{ e['id'] }}">
+        <form method="POST" action="{{ url_for('events.delete_event') }}">
+          <input type="hidden" name="event_id" value="{{ e['id'] }}">
+          <div class="input-group mb-2">
+            <input type="password" name="password" class="form-control" placeholder="Admin parolu" required>
+            <button type="submit" class="btn btn-danger">Təsdiq et</button>
+          </div>
+          <small class="text-muted">Parolu daxil edin və təsdiqləyin (admin123)</small>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p>Hələ tədbir yoxdur.</p>
+  {% endfor %}
+</div>
 {% endblock %}
