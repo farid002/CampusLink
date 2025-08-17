@@ -1,33 +1,50 @@
-
 {% extends "base.html" %}
-{% block title %}Sorğu — CampusLink{% endblock %}
+{% block title %}Sorğu{% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center">
-    <h2>{{ poll["question"] }}</h2>
-    <a class="btn btn-sm btn-outline-warning" href="{{ url_for('polls.toggle', poll_id=poll['id']) }}?password=admin123">
-      {% if poll['is_closed'] %}Aç{% else %}Bağla{% endif %}
-    </a>
-  </div>
-  <form method="post" class="mb-3">
-    {% if poll['is_closed'] %}
-      <div class="alert alert-secondary">Sorğu bağlıdır, səs vermək mümkün deyil.</div>
-    {% else %}
-      {% for opt, meta in percentages %}
-        {% set idx = loop.index0 %}
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="option_index" value="{{ idx }}" id="opt{{ idx }}">
-          <label class="form-check-label" for="opt{{ idx }}">{{ opt }}</label>
-        </div>
-      {% endfor %}
-      <button class="btn btn-primary mt-2">Səs ver</button>
-    {% endif %}
-  </form>
-  <h5>Nəticələr ({{ total }} səs)</h5>
-  <ul class="list-unstyled">
-    {% for opt, meta in percentages %}
-      {% set count = meta[0] %}
-      {% set pct = meta[1] %}
-      <li class="mb-1"><strong>{{ opt }}</strong>: {{ count }} ({{ "%.1f"|format(pct) }}%)</li>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h1 class="h5 mb-0">{{ poll.question }}</h1>
+
+  {# Aç/bağla admin əməliyyatı varsa, buradakı form səndə qalsın; yoxsa sil #}
+    <form method="post" action="{{ url_for('polls.toggle', poll_id=poll.id) }}" class="d-flex gap-2">
+      <input type="password" name="password" placeholder="Admin şifrəsi"
+             class="form-control form-control-sm" style="max-width:180px">
+      <button class="btn btn-sm {{ 'btn-secondary' if poll.is_closed else 'btn-warning' }}">
+        {{ 'Aç' if poll.is_closed else 'Bağla' }}
+      </button>
+    </form>
+</div>
+
+{% if not poll.is_closed and not session.get('voted_' ~ poll.id) %}
+<form method="post" action="{{ url_for('polls.detail', poll_id=poll.id) }}" class="mb-3">
+  <div class="list-group">
+    {% for opt in options %}
+    <label class="list-group-item">
+      <input type="radio" name="option_index" value="{{ loop.index0 }}" class="form-check-input me-1" required>
+      {{ opt }}
+    </label>
     {% endfor %}
-  </ul>
+  </div>
+  <button class="btn btn-primary mt-3">Səs ver</button>
+</form>
+{% else %}
+<div class="alert alert-info">Səsvermə bağlıdır və ya artıq səs vermisiniz.</div>
+{% endif %}
+
+<h2 class="h6 mt-4">Nəticələr</h2>
+<ul class="list-group">
+  {% for opt, cnt, pct in percentages %}
+  <li class="list-group-item">
+    <div class="d-flex justify-content-between">
+      <span>{{ opt }}</span>
+      <span><strong>{{ cnt }}</strong> ({{ pct }}%)</span>
+    </div>
+    <div class="progress mt-2" role="progressbar" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+      <div class="progress-bar" style="width: {{ pct }}%"></div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+<p class="text-muted mt-2">Cəmi səslər: {{ total }}</p>
+
 {% endblock %}

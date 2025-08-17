@@ -1,19 +1,26 @@
-
 {% extends "base.html" %}
-{% block title %}Sorğular — CampusLink{% endblock %}
+{% block title %}Sorğular{% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Sorğular</h2>
-    <a href="{{ url_for('polls.new') }}" class="btn btn-primary">Yeni sorğu</a>
-  </div>
-  <ul class="list-group">
-    {% for p in polls %}
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <a href="{{ url_for('polls.detail', poll_id=p['id']) }}">{{ p["question"] }}</a>
-        {% if p['is_closed'] %}<span class="badge bg-secondary">Bağlı</span>{% else %}<span class="badge bg-success">Açıq</span>{% endif %}
-      </li>
-    {% else %}
-      <li class="list-group-item">Hələ sorğu yoxdur.</li>
-    {% endfor %}
-  </ul>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Sorğular</h1>
+  <a class="btn btn-primary" href="{{ url_for('polls.new') }}">Yeni sorğu</a>
+</div>
+
+<div class="list-group">
+  {% for p in polls %}
+  <a class="list-group-item list-group-item-action" href="{{ url_for('polls.detail', poll_id=p.id) }}">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="me-3">
+        <strong>{{ p.question }}</strong>
+        {# created_at əlavə edəndə buraya göstərəcəyik #}
+      </div>
+      <span class="badge bg-{{ 'secondary' if p.is_closed else 'success' }}">
+        {{ 'Bağlı' if p.is_closed else 'Açıq' }}
+      </span>
+    </div>
+  </a>
+  {% else %}
+  <div class="text-muted">Hələ sorğu yoxdur.</div>
+  {% endfor %}
+</div>
 {% endblock %}
