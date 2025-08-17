@@ -92,14 +92,21 @@ def list_posts():
 
 @bp.route("/<slug>")
 def show_post(slug: str):
-    """
-    Slug əsasında post göstər.
-    """
     db = get_db()
+
+    # Fetch post first
     post = db.execute("SELECT * FROM blog_posts WHERE slug=?", (slug,)).fetchone()
     if post is None:
         return render_template("404.html"), 404
-    return render_template("blog/detail.html", post=post)
+
+    # Increment views
+    db.execute("UPDATE blog_posts SET views = views + 1 WHERE slug=?", (slug,))
+    db.commit()
+
+    post_dict = dict(post)
+    post_dict["views"] += 1
+
+    return render_template("blog/detail.html", post=post_dict)
 
 
 @bp.route("/id/<int:post_id>")
@@ -210,11 +217,23 @@ def delete(post_id: int):
     flash("Yazı silindi!", "info")
     return redirect(url_for("blog.list_posts"))
 
+
 @bp.route("/<int:post_id>", methods=["GET"])
 def detail(post_id):
-    conn = get_db()
-    post = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
-    conn.close()
+    db = get_db()
+
+    # Increment views
+    db.execute("UPDATE blog_posts SET views = views + 1 WHERE id = ?", (post_id,))
+    db.commit()
+
+    # Fetch post
+    post = db.execute("SELECT * FROM blog_posts WHERE id = ?", (post_id,)).fetchone()
+
     if post is None:
         return render_template("404.html"), 404
-    return render_template("blog/detail.html", post=post)
+
+    # Convert to dict to update views for display
+    post_dict = dict(post)
+    post_dict["views"] += 1
+
+    return render_template("blog/detail.html", post=post_dict)
