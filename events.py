@@ -1,27 +1,42 @@
 # -*- coding: utf-8 -*-
 """
-events.py — Tədbirlər modulu (SKELETON + TƏLİMAT)
-
-Bu faylda bütün funksiyalar şüurlu şəkildə “boş” saxlanılıb ki, tələbələr
-özləri implement etsinlər. Hər funksiyanın docstring-i addım-addım nə etməli
-olduqlarını, hansı SQL sorğularını yazacaqlarını və UX/ipucu detalları göstərir.
-
-Texnologiyalar: Flask (routes, request/response, render_template), SQLite (sqlite3), Jinja2 (templates)
-Şablonlar: templates/events/ qovluğunda (list.html, create.html, detail.html, my_registrations.html, export_info.html)
+events.py — Tədbirlər modulu (Tam işlək, admin session ilə)
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
-from flask import g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, Response, session
 from database import get_db
-import datetime, csv, io,sqlite3
+import datetime, csv, io, sqlite3
 
 bp = Blueprint("events", __name__, url_prefix="/events")
-ADMIN_PASS = "admin123"  # demo üçün sadə parol (yalnız dərs məqsədli)
+ADMIN_PASS = "admin123"
+
+# -----------------------------
+# Tədbirləri siyahıla / filtr
+# -----------------------------
 @bp.route("/")
 def list_events():
     db = get_db()
 
-    rows = db.execute("SELECT * FROM events ORDER BY date ASC").fetchall()
+    category = request.args.get("category", "").strip()
+    min_capacity = request.args.get("min_capacity", "").strip()
+
+    query = "SELECT * FROM events WHERE 1=1"
+    params = []
+
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+
+    if min_capacity:
+        try:
+            min_capacity = int(min_capacity)
+            query += " AND capacity >= ?"
+            params.append(min_capacity)
+        except ValueError:
+            pass
+
+    query += " ORDER BY date ASC"
+    rows = db.execute(query, params).fetchall()
 
     final_events = []
     for event in rows:
@@ -31,54 +46,58 @@ def list_events():
         ).fetchone()[0]
         remaining = max(0, event["capacity"] - count)
 
-        # Row → dict
         event_dict = dict(event)
         event_dict["remaining"] = remaining
-
         final_events.append(event_dict)
 
     return render_template("events/list.html", events=final_events)
+
+# -----------------------------
+# Yeni tədbir yarat
+# -----------------------------
 @bp.route("/create", methods=["GET","POST"])
 def create_event():
-    ADMIN_PASS = "admin123"  # demo üçün sadə parol
+    if not session.get('is_admin'):
+        flash("Admin modu aktiv deyil.", "danger")
+        return redirect(url_for("events.list_events"))
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         date = request.form.get("date", "").strip()
         location = request.form.get("location", "").strip()
+        map_link = request.form.get("map_link", "").strip()
         description = request.form.get("description", "").strip()
         capacity = request.form.get("capacity", "").strip()
-        password = request.form.get("password", "").strip()
+        category = request.form.get("category", "").strip()
 
-        # Admin parol yoxlanışı
-        if password != ADMIN_PASS:
-            error = "Admin parolu səhvdir."
-            return render_template("events/create.html", error=error)
-
-        # Vacib sahələrin yoxlanışı
-        if not title or not date or not location or not description:
+        required_fields = [title, date, location, map_link, description, category]
+        if any(not field for field in required_fields):
             error = "Bütün sahələr doldurulmalıdır."
             return render_template("events/create.html", error=error)
 
-        # Capacity int-ə çevrilir, boşdursa 100 götürülür
         try:
             capacity = int(capacity) if capacity else 100
         except ValueError:
             capacity = 100
 
-        # DB-yə əlavə
         db = get_db()
         db.execute(
-            "INSERT INTO events (title, date, location, description, capacity) VALUES (?, ?, ?, ?, ?)",
-            (title, date, location, description, capacity)
+            """
+            INSERT INTO events (title, date, location, map_link, description, capacity, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (title, date, location, map_link, description, capacity, category)
         )
         db.commit()
 
         flash("Tədbir uğurla yaradıldı!", "success")
         return redirect(url_for("events.list_events"))
 
-    # GET request: form göstərilir
     return render_template("events/create.html", error=None)
+
+# -----------------------------
+# Tədbir detallar və qeydiyyat
+# -----------------------------
 @bp.route("/<int:event_id>", methods=["GET", "POST"])
 def detail(event_id: int):
     db = get_db()
@@ -117,16 +136,17 @@ def detail(event_id: int):
     ).fetchall()
 
     return render_template("events/detail.html", event=event, regs=regs, remaining=remaining)
+
+# -----------------------------
+# Qeydiyyatları CSV-ə export
+# -----------------------------
 @bp.route("/<int:event_id>/export.csv")
 def export_csv(event_id: int):
     db = get_db()
-
-    # 1️⃣ Tədbiri yoxlayın
     event = db.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
     if not event:
         return render_template("404.html"), 404
 
-    # 2️⃣ Qeydiyyatları götürün
     regs = db.execute("""
         SELECT name, email, created_at
         FROM event_registrations
@@ -134,15 +154,12 @@ def export_csv(event_id: int):
         ORDER BY id ASC
     """, (event_id,)).fetchall()
 
-    # 3️⃣ CSV hazırlayın
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["name", "email", "created_at"])  # başlıq
-
+    writer.writerow(["name", "email", "created_at"])
     for reg in regs:
         writer.writerow([reg["name"], reg["email"], reg["created_at"]])
 
-    # 4️⃣ Cavabı qaytarın
     csv_filename = f"event_{event_id}_regs.csv"
     return Response(
         output.getvalue(),
@@ -150,53 +167,38 @@ def export_csv(event_id: int):
         headers={"Content-Disposition": f"attachment; filename={csv_filename}"}
     )
 
-@bp.route("/my-registrations")
-def my_regs():
-    db = get_db()
-    email = request.args.get("email", "").strip()
-    items = []
-
-    if email:
-        items = db.execute("""
-            SELECT e.title, e.date, e.location, r.created_at
-            FROM event_registrations r
-            JOIN events e ON e.id = r.event_id
-            WHERE r.email = ?
-            ORDER BY r.created_at DESC
-        """, (email,)).fetchall()
-
-    return render_template(
-        "events/my_registrations.html",
-        email=email,
-        items=items
-    )
-from flask import request, render_template, redirect, url_for, current_app
-
-ADMIN_PASS = "admin123"  # Dərs məqsədli demo parol
-
+# -----------------------------
+# Tədbir silmək (admin session ilə)
+# -----------------------------
 @bp.route("/delete", methods=["POST"])
 def delete_event():
-    """
-    Tədbiri admin parolu ilə silmək üçün.
-    Form POST edir: event_id və password.
-    """
-    event_id = request.form.get("event_id")
-    password = request.form.get("password", "").strip()
-
-    if password != ADMIN_PASS:
-        flash("Admin parolu səhvdir.", "danger")
+    if not session.get('is_admin'):
+        flash("Admin modu aktiv deyil.", "danger")
         return redirect(url_for("events.list_events"))
 
+    event_id = request.form.get("event_id")
     if not event_id or not event_id.isdigit():
         flash("Yanlış tədbir ID.", "danger")
         return redirect(url_for("events.list_events"))
 
     db = get_db()
-    # 1️⃣ Əvvəl qeydiyyatları sil
     db.execute("DELETE FROM event_registrations WHERE event_id = ?", (int(event_id),))
-    # 2️⃣ Sonra tədbiri sil
     db.execute("DELETE FROM events WHERE id = ?", (int(event_id),))
     db.commit()
 
     flash("Tədbir və bütün qeydiyyatlar uğurla silindi.", "success")
+    return redirect(url_for("events.list_events"))
+
+# -----------------------------
+# Admin parol ilə session aktivləşdirmə
+# -----------------------------
+@bp.route("/admin_access", methods=["POST"])
+def admin_access():
+    password = request.form.get("password", "").strip()
+    if password == ADMIN_PASS:
+        session['is_admin'] = True
+        flash("Admin modu aktiv edildi.", "success")
+    else:
+        session['is_admin'] = False
+        flash("Səhv parol.", "danger")
     return redirect(url_for("events.list_events"))

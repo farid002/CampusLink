@@ -1,12 +1,63 @@
 {% extends "base.html" %}
 {% block title %}Tədbirlər — CampusLink{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>Tədbirlər</h2>
-  <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">Yeni tədbir</a>
+<h2>Tədbirlər</h2>
+
+<!-- Filtr + Admin + Yeni tədbir -->
+<div class="d-flex mb-3">
+  <form method="get" class="row g-2 flex-grow-1">
+    <div class="col-md-3">
+      <select name="category" class="form-select">
+        <option value="">Bütün kateqoriyalar</option>
+        <option value="İdman" {% if request.args.get('category') == 'İdman' %}selected{% endif %}>İdman</option>
+        <option value="Teatr" {% if request.args.get('category') == 'Teatr' %}selected{% endif %}>Teatr</option>
+        <option value="Musiqi" {% if request.args.get('category') == 'Musiqi' %}selected{% endif %}>Musiqi</option>
+        <option value="Seminar" {% if request.args.get('category') == 'Seminar' %}selected{% endif %}>Seminar</option>
+        <option value="Digər" {% if request.args.get('category') == 'Digər' %}selected{% endif %}>Digər</option>
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <input type="number" name="min_capacity" class="form-control" placeholder="Minimum kapasite" value="{{ request.args.get('min_capacity', '') }}">
+    </div>
+
+    <div class="col-md-3 d-flex">
+      <button class="btn btn-primary me-2">Filtrlə</button>
+      <a href="{{ url_for('events.list_events') }}" class="btn btn-secondary">Təmizlə</a>
+    </div>
+  </form>
+
+  <div class="col-md-2 text-end d-flex justify-content-end">
+    <!-- Yalnız admin modu aktivdirsə Yeni tədbir düyməsi görünəcək -->
+    {% if session.get('is_admin') %}
+        <a href="{{ url_for('events.create_event') }}" class="btn btn-sm btn-success me-2">Yeni tədbir</a>
+    {% endif %}
+    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#adminModal">Admin</button>
+  </div>
 </div>
 
-<div class="list-group">
+<!-- Admin modal -->
+<div class="modal fade" id="adminModal" tabindex="-1" aria-labelledby="adminModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="post" action="{{ url_for('events.admin_access') }}">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="adminModalLabel">Admin girişi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Bağla"></button>
+        </div>
+        <div class="modal-body">
+          <input type="password" name="password" class="form-control" placeholder="Admin parolu" required>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Daxil ol</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="list-group mt-2">
   {% for e in events %}
     <div class="list-group-item">
       <div class="d-flex justify-content-between align-items-center">
@@ -14,31 +65,24 @@
           <a href="{{ url_for('events.detail', event_id=e['id']) }}" class="text-decoration-none">
             <h5 class="mb-1">{{ e["title"] }}</h5>
           </a>
+          <p class="mb-1"><span class="badge bg-info text-dark">{{ e["category"] }}</span></p>
           <p class="mb-1 text-muted">{{ e["location"] }} — Qalan yer: {{ e["remaining"] }}/{{ e["capacity"] }}</p>
         </div>
-        <div class="text-end">
-          <small class="d-block mb-2">{{ e["date"] }}</small>
-          <!-- Sil düyməsi -->
-          <button class="btn btn-danger btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#deleteForm{{ e['id'] }}" aria-expanded="false" aria-controls="deleteForm{{ e['id'] }}">
-            Sil
-          </button>
-        </div>
-      </div>
 
-      <!-- Collapse form -->
-      <div class="collapse mt-2" id="deleteForm{{ e['id'] }}">
-        <form method="POST" action="{{ url_for('events.delete_event') }}">
-          <input type="hidden" name="event_id" value="{{ e['id'] }}">
-          <div class="input-group mb-2">
-            <input type="password" name="password" class="form-control" placeholder="Admin parolu" required>
-            <button type="submit" class="btn btn-danger">Təsdiq et</button>
-          </div>
-          <small class="text-muted">Parolu daxil edin və təsdiqləyin (admin123)</small>
-        </form>
+        <!-- Yalnız admin modu aktivdirsə Sil düyməsi görünəcək -->
+        {% if session.get('is_admin') %}
+        <div class="text-end">
+            <form method="POST" action="{{ url_for('events.delete_event') }}">
+                <input type="hidden" name="event_id" value="{{ e['id'] }}">
+                <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+            </form>
+        </div>
+        {% endif %}
       </div>
     </div>
   {% else %}
     <p>Hələ tədbir yoxdur.</p>
   {% endfor %}
 </div>
+
 {% endblock %}

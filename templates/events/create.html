@@ -1,16 +1,50 @@
-
 {% extends "base.html" %}
 {% block title %}Yeni tədbir — CampusLink{% endblock %}
 {% block content %}
-  <h2>Yeni tədbir</h2>
-  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-  <form method="post">
-    <div class="mb-3"><label class="form-label">Admin parolu</label><input name="password" class="form-control" required></div>
-    <div class="mb-3"><label class="form-label">Başlıq</label><input name="title" class="form-control" required></div>
-    <div class="mb-3"><label class="form-label">Tarix (YYYY-MM-DD HH:MM)</label><input name="date" class="form-control" required></div>
-    <div class="mb-3"><label class="form-label">Məkan</label><input name="location" class="form-control" required></div>
-    <div class="mb-3"><label class="form-label">Təsvir</label><textarea name="description" class="form-control" rows="5" required></textarea></div>
-    <div class="mb-3"><label class="form-label">Kapasite</label><input name="capacity" type="number" min="1" class="form-control" value="100"></div>
-    <button class="btn btn-primary">Yarat</button>
-  </form>
+<h2>Yeni tədbir</h2>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Başlıq</label>
+    <input name="title" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Tarix (YYYY-MM-DD HH:MM)</label>
+    <input name="date" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Yer adı</label>
+    <input name="location" class="form-control" placeholder="Məsələn: Heydər Əliyev Mərkəzi" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Yer linki (Google Maps)</label>
+    <input name="map_link" class="form-control" placeholder="https://www.google.com/maps/..." required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Təsvir</label>
+    <textarea name="description" class="form-control" rows="5" required></textarea>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Kapasite</label>
+    <input name="capacity" type="number" min="1" class="form-control" value="100">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Kateqoriya</label>
+    <select name="category" class="form-select" required>
+      <option value="İdman">İdman</option>
+      <option value="Teatr">Teatr</option>
+      <option value="Musiqi">Musiqi</option>
+      <option value="Seminar">Seminar</option>
+      <option value="Digər">Digər</option>
+    </select>
+  </div>
+
+  <button class="btn btn-primary">Yarat</button>
+</form>
 {% endblock %}
